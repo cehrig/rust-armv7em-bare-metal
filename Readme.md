@@ -23,3 +23,21 @@ $ qemu-system-aarch64 \
 
 Welcome
 ```
+
+Alternatively
+
+```
+$ aarch64-linux-gnu-objcopy \
+    -O binary \
+    target/aarch64-unknown-none/release/main \
+    target/aarch64-unknown-none/release/bios
+    
+$ qemu-system-aarch64 \
+    -machine virt \
+    -m 512M \
+    -smp 1 \
+    -display none \
+    -nographic \
+    -cpu cortex-a53 \
+    -bios target/aarch64-unknown-none/release/bios
+```
