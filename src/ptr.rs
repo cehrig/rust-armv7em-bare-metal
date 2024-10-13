@@ -1,11 +1,12 @@
+use core::borrow::Borrow;
 use core::ptr;
 
+
 #[inline(never)]
-#[no_mangle]
-pub fn write_slice(addr: *mut u8, slice: &[u8]) {
+pub fn write_slice<'a, F>(addr: *mut u8, slice: impl IntoIterator<Item = F>) where F: Borrow<u8> {
     for byte in slice {
         unsafe {
-            ptr::write_volatile(addr, *byte);
+            ptr::write_volatile(addr, *byte.borrow());
         }
     }
 }
