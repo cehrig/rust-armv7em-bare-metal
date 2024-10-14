@@ -2,11 +2,11 @@
 pub enum Vector {
     Func(&'static str, *const fn()),
     Ext(&'static str, *const usize),
-    Null(&'static str, usize)
+    Null(&'static str, usize),
 }
 
 pub struct VectorTable<T, const N: usize> {
-    inner: [T; N]
+    inner: [T; N],
 }
 
 unsafe impl Sync for Vector {}
@@ -16,7 +16,7 @@ unsafe impl<T, const N: usize> Sync for VectorTable<T, N> {}
 impl<const N: usize> VectorTable<Vector, N> {
     pub const fn new(default: Vector) -> Self {
         VectorTable {
-            inner: [default; N]
+            inner: [default; N],
         }
     }
 
@@ -34,7 +34,7 @@ impl<const N: usize> VectorTable<Vector, N> {
         let mut i = N;
 
         while i != 0 {
-            raw[i-1] = match self.inner[i-1] {
+            raw[i - 1] = match self.inner[i - 1] {
                 Vector::Func(_, v) => v as _,
                 Vector::Ext(_, v) => v as _,
                 Vector::Null(_, v) => v as *const _,
@@ -42,7 +42,7 @@ impl<const N: usize> VectorTable<Vector, N> {
             i -= 1;
         }
 
-        VectorTable {inner: raw}
+        VectorTable { inner: raw }
     }
 }
 

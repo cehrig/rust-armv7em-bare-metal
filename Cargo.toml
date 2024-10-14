@@ -10,4 +10,9 @@ panic = 'abort'
 opt-level = 0               # Use slightly better optimizations.
 overflow-checks = false
 
+[features]
+default = []
+st32f4xx = []
+
+
 [dependencies]
