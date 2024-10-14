@@ -13,6 +13,7 @@ overflow-checks = false
 [features]
 default = []
 st32f4xx = []
+st32f7xx = []
 
 
 [dependencies]

@@ -1,8 +1,10 @@
+use crate::IsrKind;
+
 #[derive(Copy, Clone)]
 pub enum Vector {
-    Func(&'static str, *const fn()),
-    Ext(&'static str, *const usize),
-    Null(&'static str, usize),
+    Func(IsrKind, *const fn()),
+    Ext(IsrKind, *const usize),
+    Null(IsrKind, usize),
 }
 
 pub struct VectorTable<T, const N: usize> {
@@ -34,12 +36,13 @@ impl<const N: usize> VectorTable<Vector, N> {
         let mut i = N;
 
         while i != 0 {
-            raw[i - 1] = match self.inner[i - 1] {
+            i -= 1;
+
+            raw[i] = match self.inner[i] {
                 Vector::Func(_, v) => v as _,
                 Vector::Ext(_, v) => v as _,
                 Vector::Null(_, v) => v as *const _,
             };
-            i -= 1;
         }
 
         VectorTable { inner: raw }
@@ -58,7 +61,7 @@ macro_rules! vector {
         Vector::Null($n, $e)
     };
     (null) => {
-        vector!("undef", static 0)
+        vector!(IsrKind::Undef, static 0)
     }
 }
 

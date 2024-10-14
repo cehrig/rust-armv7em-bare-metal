@@ -13,7 +13,6 @@ SECTIONS
     /* Merge all text sections, since Rust - for some yet unknown reasons - creates separate sections per function */
     .text : {
         KEEP(*(.vector_table))
-        *(.text._start)
         *(.text.*)
     } > flash
 
