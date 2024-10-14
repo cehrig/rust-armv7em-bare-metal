@@ -4,72 +4,31 @@
 #![allow(named_asm_labels)]
 #![allow(undefined_naked_function_abi)]
 
+use asm::ptr::write_slice;
+use core::arch::{naked_asm};
+use asm::{const_vec, vector};
+use asm::vector::{Vector, VectorTable};
+
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-use asm::ptr::write_slice;
-use core::arch::{asm, naked_asm};
-
 extern {
     static LD_STACK_PTR: usize;
 }
 
-#[derive(Copy, Clone)]
-#[repr(align(4))]
-union Vector {
-    func: *const fn(),
-    ext: *const usize,
-    null: usize
-}
+// Original Vector Table
+static ISR_TABLE : VectorTable<Vector, 3> = const_vec!(3, vector!(null),
+    vector!("STP", extern LD_STACK_PTR),
+    // Thumb-mode, least-significant bit will be set
+    vector!("Reset", fn main)
+);
 
-unsafe impl Sync for Vector {}
-
-macro_rules! vector {
-    (fn $e:expr) => {
-        Vector { func: $e as _}
-    };
-    (extern $e:expr) => {
-        Vector { ext: unsafe {&$e} as *const _}
-    };
-    (static $e:expr) => {
-        Vector { null: $e }
-    };
-    (null) => {
-        vector!(static 0)
-    }
-}
-
-macro_rules! const_vec {
-    ($n:expr, $def: expr, $($b:expr), *) => {
-        const {
-            let mut arr = [$def; $n];
-            let mut p = 0;
-
-            $(
-                #[allow(unused_assignments)]
-                {
-                    arr[p] = $b;
-                    p += 1;
-                }
-            )*;
-
-            arr
-        }
-    }
-}
-
-// Cortex-M4 Vector Table
+// Cortex-M4 Vector Table we are going to bake into the binary
 #[link_section = ".vector_table"]
 #[no_mangle]
-#[used]
-static VECTOR : [Vector; 250] = const_vec!(250, vector!(null),
-    // Initial Stack Pointer
-    vector!(extern LD_STACK_PTR),
-    // Reset vector
-    vector!(fn main)
-);
+static VECTOR_TABLE : VectorTable<*const (), 3> = ISR_TABLE.raw();
 
 #[naked]
 #[no_mangle]
@@ -86,7 +45,9 @@ pub unsafe fn _start() {
 
 
 #[no_mangle]
-pub fn main()  {}
+pub fn main() {
+    write_slice(0x01 as _, b"Welcome");
+}
 
 #[no_mangle]
 pub fn busy() -> ! {
