@@ -1,11 +1,11 @@
+use crate::arch::board::LD_STACK_PTR;
 use crate::arch::vector::{Vector, VectorTable};
-use crate::{const_vec, irq_default, main, vector};
-
-extern "C" {
-    static LD_STACK_PTR: usize;
-}
+use crate::{const_vec, fault, irq_default, main, vector};
 
 pub const ISR_TABLE_SIZ: usize = 109;
+
+// Configurable Fault Status Register (MMFSR, BFSR, UFSR)
+pub const CFSR_ADDR: *const usize = crate::arch::cpu::cortex_m4::CFSR_ADDR;
 
 #[derive(Clone, Copy)]
 pub enum IsrKind {
@@ -121,10 +121,10 @@ pub static ISR_TABLE: VectorTable<Vector, ISR_TABLE_SIZ> = const_vec!(
     // Thumb-mode, least-significant bit will be set
     vector!(IsrKind::Reset, fn main),
     vector!(IsrKind::Nmi, fn irq_default),
-    vector!(IsrKind::HardFault, fn irq_default),
-    vector!(IsrKind::MmuFault, fn irq_default),
-    vector!(IsrKind::BusFault, fn irq_default),
-    vector!(IsrKind::UsageFault, fn irq_default),
+    vector!(IsrKind::HardFault, fn fault),
+    vector!(IsrKind::MmuFault, fn fault),
+    vector!(IsrKind::BusFault, fn fault),
+    vector!(IsrKind::UsageFault, fn fault),
     vector!(null),
     vector!(null),
     vector!(null),

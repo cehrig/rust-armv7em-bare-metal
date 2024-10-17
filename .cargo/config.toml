@@ -1,0 +1,6 @@
+[build]
+target = "thumbv7em-none-eabihf"
+rustflags = [
+    "--cfg", "st32f4xx",
+    "-C", "link-args=-Tlinker-script.ld"
+]

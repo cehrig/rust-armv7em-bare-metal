@@ -15,6 +15,18 @@ unsafe impl Sync for Vector {}
 
 unsafe impl<T, const N: usize> Sync for VectorTable<T, N> {}
 
+impl Vector {
+    pub(crate) const fn kind(&self) -> IsrKind {
+        let kind = match self {
+            Vector::Func(k, _) => k,
+            Vector::Ext(k, _) => k,
+            Vector::Null(k, _) => k,
+        };
+
+        *kind
+    }
+}
+
 impl<const N: usize> VectorTable<Vector, N> {
     pub const fn new(default: Vector) -> Self {
         VectorTable {
@@ -27,7 +39,7 @@ impl<const N: usize> VectorTable<Vector, N> {
         self
     }
 
-    pub fn get(&self, n: usize) -> Vector {
+    pub const fn get(&self, n: usize) -> Vector {
         self.inner[n]
     }
 

@@ -7,13 +7,8 @@ edition = "2021"
 panic = 'abort'
 
 [profile.dev]
-opt-level = 0               # Use slightly better optimizations.
+opt-level = 0
 overflow-checks = false
 
-[features]
-default = []
-st32f4xx = []
-st32f7xx = []
-
-
-[dependencies]
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(st32f4xx)', 'cfg(st32f7xx)'] }

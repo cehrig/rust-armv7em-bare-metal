@@ -3,7 +3,7 @@ This is a toy project containing a Bare Metal Rust program that will eventually 
 # Build
 
 ```
-$ cargo rustc -Zbuild-std=core --bin main --release --target ./thumbv7em-none-eabihf.json --features st32f4xx --verbose -- --emit=obj
+$ cargo rustc -Zbuild-std=core --bin main --release
        Fresh core v0.0.0 (/home/cehrig/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core)
        Fresh rustc-std-workspace-core v1.99.0 (/home/cehrig/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/rustc-std-workspace-core)
        Fresh compiler_builtins v0.1.133
