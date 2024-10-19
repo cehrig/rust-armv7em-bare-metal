@@ -2,10 +2,25 @@ use crate::arch::board::LD_STACK_PTR;
 use crate::arch::vector::{Vector, VectorTable};
 use crate::{const_vec, fault, irq_default, main, vector};
 
+pub use crate::arch::cpu::cortex_m4::*;
+
 pub const ISR_TABLE_SIZ: usize = 109;
 
-// Configurable Fault Status Register (MMFSR, BFSR, UFSR)
-pub const CFSR_ADDR: *const usize = crate::arch::cpu::cortex_m4::CFSR_ADDR;
+// st32f4xx Registers
+
+// RCC
+pub const RCC_ADDR: *const usize = 0x40023800 as _;
+pub const RCC_AHB1ENR_ADDR: *const usize = 0x4002_3830 as _;
+
+// GPIOB
+pub const GPIOB_ADDR: *const usize = 0x4002_0400 as _;
+pub const GPIOB_MODER_ADDR: *const usize = 0x4002_0400 as _;
+pub const GPIOB_ODR_ADDR: *const usize = 0x4002_0414 as _;
+
+// GPIOC
+pub const GPIOC_ADDR: *const usize = 0x4002_0800 as _;
+pub const GPIOC_MODER_ADDR: *const usize = 0x4002_0800 as _;
+pub const GPIOC_IDR_ADDR: *const usize = 0x4002_0810 as _;
 
 #[derive(Clone, Copy)]
 pub enum IsrKind {

@@ -4,9 +4,6 @@ use crate::{const_vec, irq_default, main, vector};
 
 pub const ISR_TABLE_SIZ: usize = 2;
 
-// Configurable Fault Status Register (MMFSR, BFSR, UFSR)
-pub const CFSR_ADDR: usize = 0xE000_ED28;
-
 #[derive(Clone, Copy)]
 pub enum IsrKind {
     Undef,

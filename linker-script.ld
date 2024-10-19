@@ -2,7 +2,8 @@ ENTRY(_start)
 
 MEMORY {
     flash(rx) : ORIGIN = 0x08000000, LENGTH = 2048k
-    sram(rx) : ORIGIN = 0x20000000, LENGTH = 256k
+    sram(rx) : ORIGIN = 0x20000000, LENGTH = 128k
+    sram3(rx) : ORIGIN = 0x20020000, LENGTH = 64k
 }
 
 SECTIONS
@@ -33,7 +34,7 @@ SECTIONS
     . = ALIGN(4);
 
     /* Initial Stack pointer aligned to end of sram */
-    . = ORIGIN(sram) + 0x0100;
+    . = ORIGIN(sram) + LENGTH(sram);
 
     LD_STACK_PTR = .;
 }
