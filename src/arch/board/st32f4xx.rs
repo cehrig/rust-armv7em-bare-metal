@@ -3,6 +3,7 @@ use crate::arch::vector::{Vector, VectorTable};
 use crate::{const_vec, fault, irq_default, main, vector};
 
 pub use crate::arch::cpu::cortex_m4::*;
+use crate::arch::register::{Register, Wrapper, GPIO};
 
 pub const ISR_TABLE_SIZ: usize = 109;
 
@@ -21,6 +22,10 @@ pub const GPIOB_ODR_ADDR: *const usize = 0x4002_0414 as _;
 pub const GPIOC_ADDR: *const usize = 0x4002_0800 as _;
 pub const GPIOC_MODER_ADDR: *const usize = 0x4002_0800 as _;
 pub const GPIOC_IDR_ADDR: *const usize = 0x4002_0810 as _;
+
+pub const TEST: *const Register<GPIO> = 0x4002_0810 as *const Register<GPIO>;
+
+// TEST
 
 #[derive(Clone, Copy)]
 pub enum IsrKind {

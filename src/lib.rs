@@ -9,6 +9,8 @@ use crate::arch::cpu::cortex_m4::AIRCR_ADDR;
 use crate::ptr::{read_volatile, write_volatile};
 pub use arch::board::*;
 
+use crate::arch::register::ReadPointer;
+
 // Dummy placeholders
 #[no_mangle]
 pub unsafe fn main() -> ! {
@@ -28,6 +30,11 @@ pub unsafe fn main() -> ! {
     loop {
         // Button pressed?
         let set: u32 = read_volatile(GPIOC_IDR_ADDR as _);
+
+        let bla = TEST.read();
+        //let bla = TEST.get();
+
+        let bla = TEST.content();
 
         if set & 0x0000_2000 > 0 {
             write_volatile(GPIOB_ODR_ADDR as *mut usize, [0x0000_0080]);

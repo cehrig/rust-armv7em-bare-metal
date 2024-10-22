@@ -20,7 +20,7 @@ SECTIONS
 
     .data : {
         __data_start = .;
-        *(.data)
+        *(.data*)
         __data_end = .;
     } > sram AT > flash
     .rodata : { *(.rodata*) } > sram AT > flash
