@@ -220,18 +220,6 @@ impl<T> Register<T> {
     }
 }
 
-impl<const N: usize> BitAnd for BitArray<N> {
-    type Output = BitArray<N>;
-
-    fn bitand(mut self, rhs: Self) -> Self::Output {
-        for i in 0..N {
-            self.0[i] &= rhs.0[i]
-        }
-
-        self
-    }
-}
-
 impl<const N: usize> Bits for BitArray<N> {
     fn is_set(&self, offset: usize, bit: usize) -> bool {
         self.0[offset] & (1 << bit) > 0
@@ -252,6 +240,8 @@ impl<const N: usize> Bits for BitArray<N> {
         for (source, (offset, bit)) in bits.enumerate() {
             if value & S::bit() << source > S::empty() {
                 self.set_bit(offset, bit)
+            } else {
+                self.clear_bit(offset, bit)
             }
         }
     }
