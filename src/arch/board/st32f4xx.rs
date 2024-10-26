@@ -1,9 +1,10 @@
 use crate::arch::board::LD_STACK_PTR;
 use crate::arch::vector::{Vector, VectorTable};
 use crate::{const_vec, fault, irq_default, main, vector};
+use core::ops::Range;
 
 pub use crate::arch::cpu::cortex_m4::*;
-use crate::arch::register::{Register, Wrapper, GPIO};
+use crate::arch::register::{BitsWithOffset, Register, Word};
 
 pub const ISR_TABLE_SIZ: usize = 109;
 
@@ -11,19 +12,22 @@ pub const ISR_TABLE_SIZ: usize = 109;
 
 // RCC
 pub const RCC_ADDR: *const usize = 0x40023800 as _;
-pub const RCC_AHB1ENR_ADDR: *const usize = 0x4002_3830 as _;
 
-// GPIOB
-pub const GPIOB_ADDR: *const usize = 0x4002_0400 as _;
-pub const GPIOB_MODER_ADDR: *const usize = 0x4002_0400 as _;
-pub const GPIOB_ODR_ADDR: *const usize = 0x4002_0414 as _;
+pub(crate) const RCC_AHB1ENR: *const Register<Word> = 0x4002_3830 as *const Register<Word>;
+pub(crate) const GPIOB_MODER: *const Register<Word> = 0x4002_0400 as *const Register<Word>;
+pub(crate) const GPIOB_ODR: *const Register<Word> = 0x4002_0414 as *const Register<Word>;
+pub(crate) const GPIOC_IDR: *const Register<Word> = 0x4002_0810 as *const Register<Word>;
 
-// GPIOC
-pub const GPIOC_ADDR: *const usize = 0x4002_0800 as _;
-pub const GPIOC_MODER_ADDR: *const usize = 0x4002_0800 as _;
-pub const GPIOC_IDR_ADDR: *const usize = 0x4002_0810 as _;
+pub(crate) const GPIOB: BitsWithOffset<Range<usize>, u8> = BitsWithOffset::new(0, 1..2);
+pub(crate) const GPIOC: BitsWithOffset<Range<usize>, u8> = BitsWithOffset::new(0, 2..3);
 
-pub const TEST: *const Register<GPIO> = 0x4002_0810 as *const Register<GPIO>;
+pub(crate) const GPIO_MODER_PORT_7: BitsWithOffset<Range<usize>, u8> =
+    BitsWithOffset::new(0, 14..16);
+
+pub(crate) const GPIO_ODR_PORT_7: BitsWithOffset<Range<usize>, u8> = BitsWithOffset::new(0, 7..8);
+
+pub(crate) const GPIO_IDR_PORT_13: BitsWithOffset<Range<usize>, u8> =
+    BitsWithOffset::new(0, 13..14);
 
 // TEST
 
