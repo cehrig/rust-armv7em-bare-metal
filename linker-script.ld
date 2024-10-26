@@ -14,7 +14,8 @@ SECTIONS
     .text : {
         __text_start = .;
         KEEP(*(.vector_table))
-        *(.text.*)
+        *(.text*)
+        *(.rodata*)
         __text_end = .;
     } > flash
 
@@ -23,7 +24,6 @@ SECTIONS
         *(.data*)
         __data_end = .;
     } > sram AT > flash
-    .rodata : { *(.rodata*) } > sram AT > flash
 
     /*
     .bss : { *(.bss COMMON) }
