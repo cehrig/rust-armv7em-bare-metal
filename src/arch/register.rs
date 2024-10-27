@@ -1,7 +1,6 @@
 use core::marker::PhantomData;
 use core::ops::BitAnd;
-use core::ops::Bound;
-use core::ops::{BitOrAssign, RangeBounds, Shl};
+use core::ops::{BitOrAssign, Shl};
 use core::ptr::write_volatile;
 use core::ptr::{addr_of, read_volatile};
 
@@ -13,13 +12,17 @@ pub(crate) struct Register<T> {
     inner: PhantomData<T>,
 }
 
-pub(crate) struct BitsWithOffset<R, S>(usize, R, PhantomData<S>);
+pub(crate) struct BitsWithOffset<const O: usize, const S: usize, const E: usize, Scalar>(
+    PhantomData<Scalar>,
+);
 
 pub(crate) struct BitsIterator {
     offset: usize,
     start: usize,
     end: usize,
 }
+
+pub(crate) enum Assert<const CHECK: bool> {}
 
 pub(crate) trait RegisterOps<T> {
     fn read(&self) -> T;
@@ -29,7 +32,8 @@ pub(crate) trait RegisterOps<T> {
     fn get<O>(&self, _: O) -> O::Scalar
     where
         O: BitsOffset,
-        O::Scalar: BitScalar + BitOrAssign<O::Scalar> + Shl<usize, Output = O::Scalar>;
+        O::Scalar: BitScalar + BitOrAssign<O::Scalar> + Shl<usize, Output = O::Scalar>,
+        Assert<{ <O as BitsOffset>::MAX_BYTE_OFFSET < size_of::<T>() }>: IsTrue;
 
     fn set<O>(&self, _: O)
     where
@@ -38,7 +42,8 @@ pub(crate) trait RegisterOps<T> {
             + BitAnd<O::Scalar, Output = O::Scalar>
             + Shl<usize, Output = O::Scalar>
             + PartialOrd
-            + Copy;
+            + Copy,
+        Assert<{ <O as BitsOffset>::MAX_BYTE_OFFSET < size_of::<T>() }>: IsTrue;
 
     fn set_from<O>(&self, _: O, _: O::Scalar)
     where
@@ -47,15 +52,18 @@ pub(crate) trait RegisterOps<T> {
             + BitAnd<O::Scalar, Output = O::Scalar>
             + Shl<usize, Output = O::Scalar>
             + PartialOrd
-            + Copy;
+            + Copy,
+        Assert<{ <O as BitsOffset>::MAX_BYTE_OFFSET < size_of::<T>() }>: IsTrue;
 
     fn clear<O>(&self, _: O)
     where
-        O: BitsOffset;
+        O: BitsOffset,
+        Assert<{ <O as BitsOffset>::MAX_BYTE_OFFSET < size_of::<T>() }>: IsTrue;
 
     fn all_set<O>(&self, _: impl IntoIterator<Item = O>) -> bool
     where
-        O: BitsOffset;
+        O: BitsOffset,
+        Assert<{ <O as BitsOffset>::MAX_BYTE_OFFSET < size_of::<T>() }>: IsTrue;
 }
 
 pub(crate) trait RegisterBase {
@@ -66,19 +74,7 @@ pub(crate) trait RegisterBase {
     fn from_base(_: Self::Base) -> Self;
 }
 
-pub(crate) trait BitRangeStartEnd {
-    fn start(&self) -> usize;
-
-    fn end(&self) -> usize;
-}
-
 pub(crate) trait Bits {
-    fn is_set(&self, _: usize, _: usize) -> bool;
-
-    fn set_bit(&mut self, _: usize, _: usize);
-
-    fn clear_bit(&mut self, _: usize, _: usize);
-
     fn set<O, S>(&mut self, _: O, _: S)
     where
         O: BitsOffset,
@@ -109,8 +105,28 @@ pub(crate) trait BitScalar {
 pub(crate) trait BitsOffset {
     type Scalar;
 
-    fn iter<const N: usize>(&self) -> BitsIterator;
+    const BYTE_OFFSET: usize;
+
+    const START: usize;
+
+    const END: usize;
+
+    const MAX_BYTE_OFFSET: usize = {
+        let mut offset = Self::BYTE_OFFSET;
+        let mut end = Self::END;
+
+        while end >= 8 {
+            offset += 1;
+            end -= 8
+        }
+
+        offset
+    };
+
+    fn iter(&self) -> BitsIterator;
 }
+
+pub(crate) trait IsTrue {}
 
 impl<const N: usize> RegisterBase for BitArray<N> {
     type Base = BitArray<N>;
@@ -143,6 +159,7 @@ where
     where
         O: BitsOffset,
         O::Scalar: BitScalar + BitOrAssign<O::Scalar> + Shl<usize, Output = O::Scalar>,
+        Assert<{ <O as BitsOffset>::MAX_BYTE_OFFSET < size_of::<T>() }>: IsTrue,
     {
         let v = self.read().to_base();
 
@@ -157,6 +174,7 @@ where
             + Shl<usize, Output = O::Scalar>
             + PartialOrd
             + Copy,
+        Assert<{ <O as BitsOffset>::MAX_BYTE_OFFSET < size_of::<T>() }>: IsTrue,
     {
         self.set_from(bits, <O::Scalar as BitScalar>::all())
     }
@@ -169,6 +187,7 @@ where
             + Shl<usize, Output = O::Scalar>
             + PartialOrd
             + Copy,
+        Assert<{ <O as BitsOffset>::MAX_BYTE_OFFSET < size_of::<T>() }>: IsTrue,
     {
         let mut v = self.read().to_base();
         v.set(bits, value);
@@ -179,6 +198,7 @@ where
     fn clear<O>(&self, bits: O)
     where
         O: BitsOffset,
+        Assert<{ <O as BitsOffset>::MAX_BYTE_OFFSET < size_of::<T>() }>: IsTrue,
     {
         let mut v = self.read().to_base();
         v.clear(bits);
@@ -189,6 +209,7 @@ where
     fn all_set<O>(&self, bits: impl IntoIterator<Item = O>) -> bool
     where
         O: BitsOffset,
+        Assert<{ <O as BitsOffset>::MAX_BYTE_OFFSET < size_of::<T>() }>: IsTrue,
     {
         let v = self.read().to_base();
 
@@ -217,24 +238,12 @@ impl<T> Register<T> {
 }
 
 impl<const N: usize> Bits for BitArray<N> {
-    fn is_set(&self, offset: usize, bit: usize) -> bool {
-        self.0[offset] & (1 << bit) > 0
-    }
-
-    fn set_bit(&mut self, offset: usize, bit: usize) {
-        self.0[offset] |= 1 << bit
-    }
-
-    fn clear_bit(&mut self, offset: usize, bit: usize) {
-        self.0[offset] &= !(1 << bit)
-    }
-
     fn set<O, S>(&mut self, bits: O, value: S)
     where
         O: BitsOffset,
         S: BitScalar + BitAnd<S, Output = S> + Shl<usize, Output = S> + PartialOrd + Copy,
     {
-        let iter = bits.iter::<N>();
+        let iter = bits.iter();
 
         for (source, (offset, bit)) in iter.enumerate() {
             if value & S::bit() << source > S::empty() {
@@ -250,8 +259,8 @@ impl<const N: usize> Bits for BitArray<N> {
         O: BitsOffset,
         S: BitScalar + BitOrAssign<S> + Shl<usize, Output = S>,
     {
-        let iter = bits.iter::<N>();
         let mut result = S::empty();
+        let iter = bits.iter();
 
         for (target, (offset, bit)) in iter.enumerate() {
             if self.is_set(offset, bit) {
@@ -266,7 +275,7 @@ impl<const N: usize> Bits for BitArray<N> {
     where
         O: BitsOffset,
     {
-        let iter = bits.iter::<N>();
+        let iter = bits.iter();
 
         for (offset, bit) in iter {
             if !self.is_set(offset, bit) {
@@ -281,7 +290,7 @@ impl<const N: usize> Bits for BitArray<N> {
     where
         O: BitsOffset,
     {
-        let iter = bits.iter::<N>();
+        let iter = bits.iter();
 
         for (_, (offset, bit)) in iter.enumerate() {
             self.clear_bit(offset, bit);
@@ -289,41 +298,71 @@ impl<const N: usize> Bits for BitArray<N> {
     }
 }
 
-impl<R, S> BitsWithOffset<R, S>
-where
-    R: RangeBounds<usize>,
-    S: BitScalar,
-{
-    // Todo: Width of range must fit into S
-    pub(crate) const fn new(offset: usize, range: R) -> Self {
-        BitsWithOffset(offset, range, PhantomData)
+impl<const N: usize> BitArray<N> {
+    fn offset_ok(&self, offset: usize) -> bool {
+        offset < N
+    }
+
+    fn is_set(&self, offset: usize, bit: usize) -> bool {
+        if !self.offset_ok(offset) {
+            return false;
+        }
+
+        self.0[offset] & (1 << bit) > 0
+    }
+
+    fn set_bit(&mut self, offset: usize, bit: usize) {
+        if !self.offset_ok(offset) {
+            return;
+        }
+
+        self.0[offset] |= 1 << bit
+    }
+
+    fn clear_bit(&mut self, offset: usize, bit: usize) {
+        if !self.offset_ok(offset) {
+            return;
+        }
+
+        self.0[offset] &= !(1 << bit)
     }
 }
 
-impl<R, S> BitsOffset for BitsWithOffset<R, S>
+impl<const O: usize, const S: usize, const E: usize, Scalar> BitsWithOffset<O, S, E, Scalar>
 where
-    R: RangeBounds<usize>,
+    Scalar: BitScalar,
 {
-    type Scalar = S;
+    const CHECK: () = { assert!(E - S <= size_of::<Scalar>() * 8) };
 
-    fn iter<const N: usize>(&self) -> BitsIterator {
+    pub(crate) const fn new() -> Self {
+        let _ = Self::CHECK;
+
+        BitsWithOffset(PhantomData)
+    }
+}
+
+impl<const O: usize, const S: usize, const E: usize, Scalar> BitsOffset
+    for BitsWithOffset<O, S, E, Scalar>
+{
+    type Scalar = Scalar;
+
+    const BYTE_OFFSET: usize = O;
+    const START: usize = S;
+    const END: usize = E;
+
+    fn iter(&self) -> BitsIterator {
         self.into_iter()
     }
 }
 
-impl<'a, R, S> IntoIterator for &'a BitsWithOffset<R, S>
-where
-    R: RangeBounds<usize>,
+impl<'a, const O: usize, const S: usize, const E: usize, Scalar> IntoIterator
+    for &'a BitsWithOffset<O, S, E, Scalar>
 {
     type Item = (usize, usize);
     type IntoIter = BitsIterator;
 
     fn into_iter(self) -> Self::IntoIter {
-        let offset = self.0;
-        let start = self.1.start();
-        let end = self.1.end();
-
-        BitsIterator::new(offset, start, end)
+        BitsIterator::new(O, S, E)
     }
 }
 
@@ -349,32 +388,11 @@ impl BitsIterator {
     }
 }
 
-impl<R> BitRangeStartEnd for R
-where
-    R: RangeBounds<usize>,
-{
-    fn start(&self) -> usize {
-        match self.start_bound() {
-            Bound::Included(s) => *s,
-            Bound::Excluded(s) => s.saturating_add(1),
-            _ => panic!("Bit range start must be bounded"),
-        }
-    }
-
-    fn end(&self) -> usize {
-        match self.end_bound() {
-            Bound::Included(e) => *e,
-            Bound::Excluded(e) => e.saturating_sub(1),
-            _ => panic!("Bit range end must be bounded"),
-        }
-    }
-}
-
 impl Iterator for BitsIterator {
     type Item = (usize, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.start > self.end {
+        if self.start >= self.end {
             return None;
         }
 
@@ -387,14 +405,18 @@ impl Iterator for BitsIterator {
     }
 }
 
-impl<R, S> IntoIterator for BitsWithOffset<R, S> {
-    type Item = BitsWithOffset<R, S>;
-    type IntoIter = core::array::IntoIter<BitsWithOffset<R, S>, 1>;
+impl<const O: usize, const S: usize, const E: usize, Scalar> IntoIterator
+    for BitsWithOffset<O, S, E, Scalar>
+{
+    type Item = BitsWithOffset<O, S, E, Scalar>;
+    type IntoIter = core::array::IntoIter<BitsWithOffset<O, S, E, Scalar>, 1>;
 
     fn into_iter(self) -> Self::IntoIter {
         [self].into_iter()
     }
 }
+
+impl IsTrue for Assert<true> {}
 
 macro_rules! bitscalar_impl_for_num {
     ($($ty:ty),*) => {
