@@ -8,6 +8,8 @@ pub(crate) struct BitArray<const N: usize>([u8; N]);
 
 pub(crate) type Word = BitArray<4>;
 
+pub(crate) type HalfWord = BitArray<2>;
+
 pub(crate) struct Register<T> {
     inner: PhantomData<T>,
 }
