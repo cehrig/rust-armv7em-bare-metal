@@ -79,15 +79,23 @@ pub(crate) trait Bits {
 
     fn clear_bit(&mut self, _: usize, _: usize);
 
-    fn set<S>(&mut self, _: BitsIterator, _: S)
+    fn set<O, S>(&mut self, _: O, _: S)
     where
+        O: BitsOffset,
         S: BitScalar + BitAnd<S, Output = S> + Shl<usize, Output = S> + PartialOrd + Copy;
 
-    fn get<S>(&self, _: BitsIterator) -> S
+    fn get<O, S>(&self, _: O) -> S
     where
+        O: BitsOffset,
         S: BitScalar + BitOrAssign<S> + Shl<usize, Output = S>;
 
-    fn clear(&mut self, _: BitsIterator);
+    fn all_set<O>(&self, _: O) -> bool
+    where
+        O: BitsOffset;
+
+    fn clear<O>(&mut self, _: O)
+    where
+        O: BitsOffset;
 }
 
 pub(crate) trait BitScalar {
@@ -101,7 +109,7 @@ pub(crate) trait BitScalar {
 pub(crate) trait BitsOffset {
     type Scalar;
 
-    fn iter(&self) -> BitsIterator;
+    fn iter<const N: usize>(&self) -> BitsIterator;
 }
 
 impl<const N: usize> RegisterBase for BitArray<N> {
@@ -138,7 +146,7 @@ where
     {
         let v = self.read().to_base();
 
-        v.get(bits.iter())
+        v.get(bits)
     }
 
     fn set<O>(&self, bits: O)
@@ -163,7 +171,7 @@ where
             + Copy,
     {
         let mut v = self.read().to_base();
-        v.set(bits.iter(), value);
+        v.set(bits, value);
 
         self.write(RegisterBase::from_base(v))
     }
@@ -173,7 +181,7 @@ where
         O: BitsOffset,
     {
         let mut v = self.read().to_base();
-        v.clear(bits.iter());
+        v.clear(bits);
 
         self.write(RegisterBase::from_base(v))
     }
@@ -185,10 +193,8 @@ where
         let v = self.read().to_base();
 
         for i in bits {
-            for (offset, bit) in i.iter() {
-                if !v.is_set(offset, bit) {
-                    return false;
-                }
+            if !v.all_set(i) {
+                return false;
             }
         }
 
@@ -223,11 +229,14 @@ impl<const N: usize> Bits for BitArray<N> {
         self.0[offset] &= !(1 << bit)
     }
 
-    fn set<S>(&mut self, bits: BitsIterator, value: S)
+    fn set<O, S>(&mut self, bits: O, value: S)
     where
+        O: BitsOffset,
         S: BitScalar + BitAnd<S, Output = S> + Shl<usize, Output = S> + PartialOrd + Copy,
     {
-        for (source, (offset, bit)) in bits.enumerate() {
+        let iter = bits.iter::<N>();
+
+        for (source, (offset, bit)) in iter.enumerate() {
             if value & S::bit() << source > S::empty() {
                 self.set_bit(offset, bit)
             } else {
@@ -236,13 +245,15 @@ impl<const N: usize> Bits for BitArray<N> {
         }
     }
 
-    fn get<S>(&self, bits: BitsIterator) -> S
+    fn get<O, S>(&self, bits: O) -> S
     where
+        O: BitsOffset,
         S: BitScalar + BitOrAssign<S> + Shl<usize, Output = S>,
     {
+        let iter = bits.iter::<N>();
         let mut result = S::empty();
 
-        for (target, (offset, bit)) in bits.enumerate() {
+        for (target, (offset, bit)) in iter.enumerate() {
             if self.is_set(offset, bit) {
                 result |= S::bit() << target;
             }
@@ -251,8 +262,28 @@ impl<const N: usize> Bits for BitArray<N> {
         result
     }
 
-    fn clear(&mut self, bits: BitsIterator) {
-        for (_, (offset, bit)) in bits.enumerate() {
+    fn all_set<O>(&self, bits: O) -> bool
+    where
+        O: BitsOffset,
+    {
+        let iter = bits.iter::<N>();
+
+        for (offset, bit) in iter {
+            if !self.is_set(offset, bit) {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    fn clear<O>(&mut self, bits: O)
+    where
+        O: BitsOffset,
+    {
+        let iter = bits.iter::<N>();
+
+        for (_, (offset, bit)) in iter.enumerate() {
             self.clear_bit(offset, bit);
         }
     }
@@ -275,7 +306,7 @@ where
 {
     type Scalar = S;
 
-    fn iter(&self) -> BitsIterator {
+    fn iter<const N: usize>(&self) -> BitsIterator {
         self.into_iter()
     }
 }
