@@ -51,12 +51,7 @@ pub(crate) trait RegisterOps<T> {
 
     fn clear<O>(&self, _: O)
     where
-        O: BitsOffset,
-        O::Scalar: BitScalar
-            + BitAnd<O::Scalar, Output = O::Scalar>
-            + Shl<usize, Output = O::Scalar>
-            + PartialOrd
-            + Copy;
+        O: BitsOffset;
 
     fn all_set<O>(&self, _: impl IntoIterator<Item = O>) -> bool
     where
@@ -176,11 +171,6 @@ where
     fn clear<O>(&self, bits: O)
     where
         O: BitsOffset,
-        O::Scalar: BitScalar
-            + BitAnd<O::Scalar, Output = O::Scalar>
-            + Shl<usize, Output = O::Scalar>
-            + PartialOrd
-            + Copy,
     {
         let mut v = self.read().to_base();
         v.clear(bits.iter());
